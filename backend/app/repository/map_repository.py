@@ -19,7 +19,7 @@ class MapRepository(BaseRepository):
             bbox = func.ST_MakeEnvelope(min_lon, min_lat, max_lon, max_lat, 4326)
 
             query = session.query(
-                Node.id, Node.map_id, Node.is_walkable, Node.terrain_type, Node.created_at, Node.updated_at,
+                Node.id, Node.map_id, Node.is_walkable, Node.terrain_type,
                 func.ST_Y(Node.geom).label('lat'),
                 func.ST_X(Node.geom).label('lon')
             ).filter(
@@ -33,5 +33,5 @@ class MapRepository(BaseRepository):
         with self.session_factory() as session:
             return session.query(Edge).filter(
                 Edge.map_id == map_id,
-                Edge.source_id.in_(node_ids)
+                Edge.source_id.in_(node_ids) # type: ignore
             ).all()

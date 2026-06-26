@@ -1,27 +1,33 @@
-from typing import Any
-from sqlmodel import Field
-from sqlalchemy import Column
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean
+from sqlalchemy.ext.declarative import declarative_base
 from geoalchemy2 import Geometry
-from app.model.base_model import BaseModel
 
-class Map(BaseModel, table=True):
+Base = declarative_base()
+
+class Map(Base):
     __tablename__ = "maps"  
-    name: str = Field(index=True)
-    pmtiles_url: str = Field()
-    description: str = Field(default=None, nullable=True)
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    pmtiles_url = Column(String, nullable=False)
+    description = Column(String, default=None, nullable=True)
 
-class Node(BaseModel, table=True):
+
+class Node(Base):
     __tablename__ = "nodes" 
 
-    map_id: int = Field(foreign_key="maps.id", index=True) # Имя таблицы изменилось на maps
-    geom: Any = Field(sa_column=Column(Geometry("POINT", srid=4326)))
-    is_walkable: bool = Field(default=True)
-    terrain_type: str = Field(default="dirt_trail")
+    id = Column(String(50), primary_key=True)
+    map_id = Column(Integer, ForeignKey("maps.id"), index=True)
+    geom = Column(Geometry("POINT", srid=4326))
+    is_walkable = Column(Boolean, default=True)
+    terrain_type = Column(String, default="dirt_trail")
 
-class Edge(BaseModel, table=True):
+
+class Edge(Base):
     __tablename__ = "edges"
     
-    map_id: int = Field(foreign_key="maps.id", index=True)
-    source_id: int = Field(foreign_key="nodes.id", index=True)
-    target_id: int = Field(foreign_key="nodes.id", index=True)
-    weight: float = Field()
+    id = Column(Integer, primary_key=True, index=True)
+    map_id = Column(Integer, ForeignKey("maps.id"), index=True)
+    source_id = Column(String(50), ForeignKey("nodes.id"), index=True)
+    target_id = Column(String(50), ForeignKey("nodes.id"), index=True)
+    weight = Column(Float, nullable=False)

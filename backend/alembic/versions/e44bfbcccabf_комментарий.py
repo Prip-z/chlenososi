@@ -1,3 +1,4 @@
+# type: ignore
 """комментарий
 
 Revision ID: e44bfbcccabf

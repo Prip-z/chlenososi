@@ -5,6 +5,8 @@ python-multipart==0.0.9
 
 dependency-injector>=4.41.0
 
+aioboto3==13.1.0
+
 SQLAlchemy==1.4.36
 sqlmodel==0.0.8
 GeoAlchemy2==0.12.5

@@ -28,10 +28,10 @@ class Database:
         )
 
     def create_database(self) -> None:
-        BaseModel.metadata.create_all(self._engine)
+        BaseModel.metadata.create_all(self._engine) # type: ignore
 
     @contextmanager
-    def session(self) -> Generator[Any, Any, AbstractContextManager[Session]]:
+    def session(self) -> Generator[Session, None, None]: # Теперь типы идеальные
         session: Session = self._session_factory()
         try:
             yield session

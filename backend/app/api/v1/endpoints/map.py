@@ -1,5 +1,5 @@
 ﻿from dependency_injector.wiring import Provide
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException
 
 from app.core.container import Container
 from app.core.middleware import inject
@@ -32,11 +32,28 @@ def get_map(
 
 @router.post("", response_model=Map)
 @inject
-def create_map(
-    map_data: UpsertMap,
+async def create_map(
+    name: str = Form(...),
+    pmtiles_url: str = Form(""), # Дефолтное значение, если S3 путь генерируется внутри сервиса
+    description: str = Form(None),
+    file: UploadFile = File(...),
     service: MapService = Depends(Provide[Container.map_service]),
 ):
-    return service.add(map_data)
+    """
+    Создание карты с загрузкой файла .pmtiles в MinIO S3
+    """
+    if not file.filename or not file.filename.endswith('.pmtiles'):
+        raise HTTPException(status_code=400, detail="Only .pmtiles files are allowed")
+
+    # Собираем данные в схему UpsertMap, которую ждет твой MapService
+    map_data = UpsertMap(
+        name=name,
+        pmtiles_url=pmtiles_url,
+        description=description
+    )
+    
+    # Передаем в сервис и схему данных, и сам файл для отправки в S3
+    return await service.add_with_file(map_data, file)
 
 
 @router.patch("/{map_id}", response_model=Map)

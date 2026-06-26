@@ -40,8 +40,8 @@ services:
     networks:
       - backend_network
 
-    minio:
-    image: minio/minio
+  minio:
+    image: minio/minio:latest
     container_name: map_storage
     restart: always
     command: server /data --console-address ":9001"
@@ -53,6 +53,8 @@ services:
       - "9001:9001" # Порт для веб-интерфейса
     volumes:
       - minio_data:/data
+    networks:
+      - backend_network
 
 volumes:
   pg_data:

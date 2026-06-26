@@ -31,8 +31,8 @@ class BaseRepository:
             filter_options = dict_to_sqlalchemy_filter_options(self.model, schema.dict(exclude_none=True))
             query = session.query(self.model)
             if eager:
-                for eager in getattr(self.model, "eagers", []):
-                    query = query.options(joinedload(getattr(self.model, eager)))
+                for eager_relation in getattr(self.model, "eagers", []):
+                    query = query.options(joinedload(getattr(self.model, eager_relation)))
             filtered_query = query.filter(filter_options)
             query = filtered_query.order_by(order_query)
             if page_size == "all":
@@ -54,8 +54,8 @@ class BaseRepository:
         with self.session_factory() as session:
             query = session.query(self.model)
             if eager:
-                for eager in getattr(self.model, "eagers", []):
-                    query = query.options(joinedload(getattr(self.model, eager)))
+                for eager_relation in getattr(self.model, "eagers", []):
+                    query = query.options(joinedload(getattr(self.model, eager_relation)))
             query = query.filter(self.model.id == id).first()
             if not query:
                 raise NotFoundError(detail=f"not found id : {id}")
@@ -78,9 +78,9 @@ class BaseRepository:
             session.commit()
             return self.read_by_id(id)
 
-    def update_attr(self, id: int, column: str, value: Any):
+    def update_attr(self, id: int, attr: str, value: Any):
         with self.session_factory() as session:
-            session.query(self.model).filter(self.model.id == id).update({column: value})
+            session.query(self.model).filter(self.model.id == id).update({attr: value})
             session.commit()
             return self.read_by_id(id)
 

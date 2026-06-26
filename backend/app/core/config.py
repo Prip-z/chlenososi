@@ -43,6 +43,11 @@ class Configs(BaseSettings):
     
     DATABASE_URI: str = ""
 
+    S3_ENDPOINT_URL: str = ""
+    S3_ACCESS_KEY: str = ""
+    S3_SECRET_KEY: str = ""
+    S3_BUCKET_NAME: str = ""
+
     @validator("DB_PORT", pre=True, always=True)
     def assemble_db_port(cls, v, values):
         if v:

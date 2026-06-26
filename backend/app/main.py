@@ -6,6 +6,9 @@ from app.core.config import configs
 from app.core.container import Container
 from app.util.class_object import singleton
 
+from app.core.s3 import s3_storage
+from sqlalchemy import text
+
 
 @singleton
 class AppCreator:
@@ -36,7 +39,7 @@ class AppCreator:
         def health():
             try:
                 with self.db.session() as session:
-                    session.execute("SELECT 1")
+                    session.execute(text("SELECT 1")) 
                 return {
                     "status": "ok",
                     "service": configs.PROJECT_NAME,
@@ -54,7 +57,12 @@ class AppCreator:
         self.app.include_router(v1_routers, prefix=configs.API_V1_STR)
 
 
+
 app_creator = AppCreator()
 app = app_creator.app
 db = app_creator.db
 container = app_creator.container
+
+@app.on_event("startup")
+async def startup_event():
+    await s3_storage.init_bucket()
