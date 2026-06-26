@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_USER: mapuser
+      POSTGRES_PASSWORD: mappassword
+      POSTGRES_DB: forestmap
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mapuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend_network
+
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ENV: dev
+      DB: postgresql
+      DB_USER: mapuser
+      DB_PASSWORD: mappassword
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      SECRET_KEY: supersecretkey
+    volumes:
+      - .:/app
+    networks:
+      - backend_network
+
+volumes:
+  pg_data:
+
+networks:
+  backend_network:
+    driver: bridge

@@ -2,8 +2,11 @@ from dependency_injector import containers, providers
 
 from app.core.config import configs
 from app.core.database import Database
-from app.repository import *
-from app.services import *
+from app.repository.map_repository import MapRepository
+from app.repository.user_repository import UserRepository
+from app.services.auth_service import AuthService
+from app.services.map_service import MapService
+from app.services.user_service import UserService
 
 
 class Container(containers.DeclarativeContainer):
@@ -11,7 +14,6 @@ class Container(containers.DeclarativeContainer):
         modules=[
             "app.api.v1.endpoints.auth",
             "app.api.v1.endpoints.user",
-            "app.api.v2.endpoints.auth",
             "app.api.v1.endpoints.map",
             "app.core.dependencies",
         ]
@@ -23,7 +25,5 @@ class Container(containers.DeclarativeContainer):
     map_repository = providers.Factory(MapRepository, session_factory=db.provided.session)
 
     auth_service = providers.Factory(AuthService, user_repository=user_repository)
-    post_service = providers.Factory(PostService, post_repository=post_repository, tag_repository=tag_repository)
-    tag_service = providers.Factory(TagService, tag_repository=tag_repository)
     user_service = providers.Factory(UserService, user_repository=user_repository)
     map_service = providers.Factory(MapService, map_repository=map_repository)

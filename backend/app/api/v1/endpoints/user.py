@@ -11,7 +11,6 @@ from app.services.user_service import UserService
 
 router = APIRouter(prefix="/user", tags=["user"], dependencies=[Depends(JWTBearer())])
 
-
 @router.get("", response_model=FindUserResult)
 @inject
 def get_user_list(

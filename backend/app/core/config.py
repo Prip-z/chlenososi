@@ -1,82 +1,83 @@
 import os
-from typing import List
-
+from typing import List, Dict
 from dotenv import load_dotenv
-from pydantic import BaseSettings
+from pydantic import BaseSettings, validator
 
 load_dotenv()
 
-ENV: str = ""
+ENV_DATABASE_MAPPER: Dict[str, str] = {
+    "prod": "forestmap",
+    "stage": "forestmap",
+    "dev": "forestmap",
+    "test": "forestmap",
+}
 
+DB_ENGINE_MAPPER: Dict[str, str] = {
+    "postgresql": "postgresql",
+    "mysql": "mysql+pymysql",
+}
 
 class Configs(BaseSettings):
-    # base
-    ENV: str = os.getenv("ENV", "dev")
+    # Base configuration
+    # Pydantic сам возьмет значение из переменной окружения ENV, если её нет — поставит 'dev'
+    ENV: str = "dev"  
     API: str = "/api"
     API_V1_STR: str = "/api/v1"
     API_V2_STR: str = "/api/v2"
     PROJECT_NAME: str = "fca-api"
-    ENV_DATABASE_MAPPER: dict = {
-        "prod": "fca",
-        "stage": "stage-fca",
-        "dev": "dev-fca",
-        "test": "test-fca",
-    }
-    DB_ENGINE_MAPPER: dict = {
-        "postgresql": "postgresql",
-        "mysql": "mysql+pymysql",
-    }
-
+    
     PROJECT_ROOT: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    # date
+    # Date formats
     DATETIME_FORMAT: str = "%Y-%m-%dT%H:%M:%S"
     DATE_FORMAT: str = "%Y-%m-%d"
 
-    # auth
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 60 minutes * 24 hours * 30 days = 30 days
+    # Auth
+    SECRET_KEY: str = ""
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30 days
 
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
 
-    # database
-    DB: str = os.getenv("DB", "postgresql")
-    DB_USER: str = os.getenv("DB_USER")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD")
-    DB_HOST: str = os.getenv("DB_HOST")
-    DB_PORT: str = os.getenv("DB_PORT", "3306")
-    DB_ENGINE: str = DB_ENGINE_MAPPER.get(DB, "postgresql")
+    DB: str = "postgresql"
+    DB_USER: str = "postgres"
+    DB_PASSWORD: str = "postgres"
+    DB_HOST: str = "localhost"
+    DB_PORT: str = "5432"
+    DB_NAME: str = ""
+    
+    DATABASE_URI: str = ""
 
-    DATABASE_URI_FORMAT: str = "{db_engine}://{user}:{password}@{host}:{port}/{database}"
+    @validator("DB_PORT", pre=True, always=True)
+    def assemble_db_port(cls, v, values):
+        if v:
+            return v
+        return "5432" if values.get("DB") == "postgresql" else "3306"
 
-    DATABASE_URI = "{db_engine}://{user}:{password}@{host}:{port}/{database}".format(
-        db_engine=DB_ENGINE,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        host=DB_HOST,
-        port=DB_PORT,
-        database=ENV_DATABASE_MAPPER[ENV],
-    )
+    @validator("DATABASE_URI", pre=True, always=True)
+    def assemble_db_connection(cls, v, values):
+        if v:
+            return v
+            
+        db = values.get("DB", "postgresql")
+        engine = DB_ENGINE_MAPPER.get(db, "postgresql")
+        user = values.get("DB_USER")
+        password = values.get("DB_PASSWORD")
+        host = values.get("DB_HOST")
+        port = values.get("DB_PORT")
+        
+        env = values.get("ENV", "dev")
+        database = values.get("DB_NAME") or ENV_DATABASE_MAPPER.get(env, "forestmap")
+        
+        return f"{engine}://{user}:{password}@{host}:{port}/{database}"
 
-    # find query
-    PAGE = 1
-    PAGE_SIZE = 20
-    ORDERING = "-id"
+    PAGE: int = 1
+    PAGE_SIZE: int = 20
+    ORDERING: str = "-id"
 
     class Config:
         case_sensitive = True
-
-
-class TestConfigs(Configs):
-    ENV: str = "test"
+        env_file = ".env" 
 
 
 configs = Configs()
-
-if ENV == "prod":
-    pass
-elif ENV == "stage":
-    pass
-elif ENV == "test":
-    setting = TestConfigs()
