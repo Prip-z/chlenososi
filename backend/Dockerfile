@@ -9,12 +9,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN chmod +x docker-entrypoint.sh
-
 EXPOSE 8000
 
-ENTRYPOINT ["/bin/sh", "docker-entrypoint.sh"]
+CMD sh -c "echo 'Проверяем доступность базы...' && \
+           until pg_isready -h postgres -U mapuser -p 5432 -d forestmap; do sleep 2; done && \
+           echo 'База готова. Накатываем миграции...' && \
+           alembic upgrade head && \
+           echo 'Запускаем сервер...' && \
+           exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"

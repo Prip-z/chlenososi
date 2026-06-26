@@ -10,19 +10,15 @@ from app.util.class_object import singleton
 @singleton
 class AppCreator:
     def __init__(self):
-        # set app default
         self.app = FastAPI(
             title=configs.PROJECT_NAME,
             openapi_url=f"{configs.API}/openapi.json",
             version="0.0.1",
         )
 
-        # set db and container
         self.container = Container()
         self.db = self.container.db()
-        # self.db.create_database()
 
-        # set cors
         if configs.BACKEND_CORS_ORIGINS:
             self.app.add_middleware(
                 CORSMiddleware,
@@ -32,16 +28,13 @@ class AppCreator:
                 allow_headers=["*"],
             )
 
-        # set routes
         @self.app.get("/")
         def root():
             return "service is working"
 
         @self.app.get("/health")
         def health():
-            """Публичный endpoint для проверки состояния приложения и БД"""
             try:
-                # Проверяем подключение к БД
                 with self.db.session() as session:
                     session.execute("SELECT 1")
                 return {

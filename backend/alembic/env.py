@@ -8,7 +8,6 @@ from alembic import context
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# 2. ИМПОРТИРУЕМ КОНФИГ И МОДЕЛИ
 from app.core.config import configs
 from sqlmodel import SQLModel
 
@@ -22,12 +21,20 @@ config = context.config
 
 config.set_main_option("sqlalchemy.url", configs.DATABASE_URI)
 
-# Interpret the config file for Python logging.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# 4. УКАЗЫВАЕМ МЕТАДАННЫЕ ДЛЯ АВТОГЕНЕРАЦИИ
 target_metadata = SQLModel.metadata
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table" and name == "spatial_ref_sys":
+        return False
+        
+    if type_ == "index" and name and name.startswith("idx_") and name.endswith("_geom"):
+        return False
+        
+    return True
+
 
 
 def run_migrations_offline() -> None:
@@ -38,6 +45,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -47,8 +55,6 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
     
-    # engine_from_config прочитает настройки с префиксом "sqlalchemy.", 
-    # а мы туда выше как раз прокинули наш url через set_main_option
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -57,14 +63,20 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, include_object=include_object
+            
         )
 
         with context.begin_transaction():
             context.run_migrations()
 
 
+
+
+
+
 if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
+

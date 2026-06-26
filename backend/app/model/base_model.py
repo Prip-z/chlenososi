@@ -1,9 +1,5 @@
-from datetime import datetime
-
-from sqlmodel import Column, DateTime, Field, SQLModel, func
-
+from typing import Optional
+from sqlmodel import SQLModel, Field
 
 class BaseModel(SQLModel):
-    id: int = Field(primary_key=True)
-    created_at: datetime = Field(sa_column=Column(DateTime(timezone=True), default=func.now()))
-    updated_at: datetime = Field(sa_column=Column(DateTime(timezone=True), default=func.now(), onupdate=func.now()))
+    id: Optional[int] = Field(default=None, primary_key=True, nullable=False)

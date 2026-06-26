@@ -16,10 +16,8 @@ class MapRepository(BaseRepository):
         dict]:
         """Ищет вершины внутри квадрата и сразу конвертирует PostGIS POINT в lat/lon"""
         with self.session_factory() as session:
-            # Создаем полигон квадрата: ST_MakeEnvelope
             bbox = func.ST_MakeEnvelope(min_lon, min_lat, max_lon, max_lat, 4326)
 
-            # Ищем ноды
             query = session.query(
                 Node.id, Node.map_id, Node.is_walkable, Node.terrain_type, Node.created_at, Node.updated_at,
                 func.ST_Y(Node.geom).label('lat'),
@@ -29,7 +27,6 @@ class MapRepository(BaseRepository):
                 func.ST_Intersects(Node.geom, bbox)
             )
 
-            # Возвращаем как список словарей для удобства сериализации
             return [row._asdict() for row in query.all()]
 
     def get_edges_by_node_ids(self, map_id: int, node_ids: List[int]) -> List[Edge]:

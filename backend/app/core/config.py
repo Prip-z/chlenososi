@@ -18,8 +18,6 @@ DB_ENGINE_MAPPER: Dict[str, str] = {
 }
 
 class Configs(BaseSettings):
-    # Base configuration
-    # Pydantic сам возьмет значение из переменной окружения ENV, если её нет — поставит 'dev'
     ENV: str = "dev"  
     API: str = "/api"
     API_V1_STR: str = "/api/v1"
@@ -28,15 +26,12 @@ class Configs(BaseSettings):
     
     PROJECT_ROOT: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-    # Date formats
     DATETIME_FORMAT: str = "%Y-%m-%dT%H:%M:%S"
     DATE_FORMAT: str = "%Y-%m-%d"
 
-    # Auth
     SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30  # 30 days
 
-    # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
 
     DB: str = "postgresql"
@@ -65,7 +60,9 @@ class Configs(BaseSettings):
         password = values.get("DB_PASSWORD")
         host = values.get("DB_HOST")
         port = values.get("DB_PORT")
-        
+        if not os.path.exists("/local_run_marker") and host == "postgres":
+            if not os.path.exists("/.dockerenv"):
+                host = "127.0.0.1"
         env = values.get("ENV", "dev")
         database = values.get("DB_NAME") or ENV_DATABASE_MAPPER.get(env, "forestmap")
         
