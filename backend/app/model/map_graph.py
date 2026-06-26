@@ -16,7 +16,7 @@ class Map(Base):
 class Node(Base):
     __tablename__ = "nodes" 
 
-    id = Column(String(50), primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     map_id = Column(Integer, ForeignKey("maps.id"), index=True)
     geom = Column(Geometry("POINT", srid=4326))
     is_walkable = Column(Boolean, default=True)

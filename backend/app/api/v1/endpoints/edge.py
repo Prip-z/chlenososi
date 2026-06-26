@@ -32,7 +32,7 @@ def get_edge(
 
 @router.post("", response_model=Edge)
 @inject
-def create_edge(
+async def create_edge(
     edge: UpsertEdge,
     service: EdgeService = Depends(Provide[Container.edge_service]),
 ):

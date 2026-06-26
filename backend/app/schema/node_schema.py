@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -18,7 +19,8 @@ class NodeBase(BaseModel):
 
 
 class Node(ModelBaseInfo, NodeBase):
-    ...
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 
 class FindNode(FindBase, NodeBase, metaclass=AllOptional):

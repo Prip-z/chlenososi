@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -23,7 +24,8 @@ class MapBase(BaseModel):
 
 
 class Map(ModelBaseInfo, MapBase):
-    ...
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 
 class FindMap(FindBase, MapBase, metaclass=AllOptional):

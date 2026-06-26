@@ -32,7 +32,7 @@ def get_node(
 
 @router.post("", response_model=Node)
 @inject
-def create_node(
+async def create_node(
     node: UpsertNode,
     service: NodeService = Depends(Provide[Container.node_service]),
 ):

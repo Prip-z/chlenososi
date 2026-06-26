@@ -9,6 +9,8 @@ from app.schema.map_schema import UpsertMap
 from app.schema.map_schema import NodeResponse, EdgeResponse, MapAreaResponse, BoundingBox
 from app.core.exceptions import NotFoundError # или откуда у тебя NotFoundError
 
+from typing import cast
+
 class MapService(BaseService):
     def __init__(self, map_repository: MapRepository):
         self.map_repository = map_repository
@@ -41,9 +43,23 @@ class MapService(BaseService):
         )
     
     async def add_with_file(self, map_data: UpsertMap, file) -> Map:
-        file_bytes = await file.read()
-        unique_filename = f"{uuid.uuid4()}_{file.filename}"
-        s3_url = await s3_storage.upload_file(file_bytes, unique_filename)
+        import uuid
+        from typing import Any, cast
         
+        # 1. Генерируем уникальное имя файла для S3
+        file_extension = file.filename.split('.')[-1] if file.filename else 'pmtiles'
+        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        
+        # 2. Загружаем файл в MinIO S3 (передаем file.file, чтобы boto3 не ругался)
+        s3_url = await s3_storage.upload_file(file.file, unique_filename)
+        
+        # 3. Прописываем полученный URL в схему данных
         map_data.pmtiles_url = s3_url
-        return cast(Map, self.map_repository.create(map_data)) # type: ignore
+        
+        # 4. Передаем схему в репозиторий, применив cast к Any, чтобы линтер пропустил тип
+        # Репозиторий внутри себя вызовет map_data.dict() и создаст модель БД
+        created_db_model = self.map_repository.create(cast(Any, map_data))
+        
+        # 5. Возвращаем схему ответа
+        from app.schema.map_schema import Map as SchemaMap
+        return cast(SchemaMap, created_db_model)
