@@ -14,5 +14,7 @@ def test_geojson_conversion():
     assert result['type'] == 'FeatureCollection'
     assert result['features'][0]['geometry']['type'] == 'Point'
     assert result['features'][0]['geometry']['coordinates'] == [37.0, 55.0]
+    assert result['features'][0]['properties']['lat'] == 55.0
+    assert result['features'][0]['properties']['lon'] == 37.0
 
 test_geojson_conversion()

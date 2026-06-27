@@ -34,25 +34,20 @@ def get_map(
 @inject
 async def create_map(
     name: str = Form(...),
-    pmtiles_url: str = Form(""), # Дефолтное значение, если S3 путь генерируется внутри сервиса
+    pmtiles_url: str = Form(""), 
     description: str = Form(None),
     file: UploadFile = File(...),
     service: MapService = Depends(Provide[Container.map_service]),
 ):
-    """
-    Создание карты с загрузкой файла .pmtiles в MinIO S3
-    """
     if not file.filename or not file.filename.endswith('.pmtiles'):
         raise HTTPException(status_code=400, detail="Only .pmtiles files are allowed")
 
-    # Собираем данные в схему UpsertMap, которую ждет твой MapService
     map_data = UpsertMap(
         name=name,
         pmtiles_url=pmtiles_url,
         description=description
     )
     
-    # Передаем в сервис и схему данных, и сам файл для отправки в S3
     return await service.add_with_file(map_data, file)
 
 

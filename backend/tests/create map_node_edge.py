@@ -43,12 +43,12 @@ NODE_COORDINATES = {
 }
 
 def log_error(step_name: str, response: httpx.Response, payload: Optional[dict]):
-    print(f"\n🛑 [ОШИБКА РАНТАЙМА] На этапе: {step_name}")
+    print(f"\n[ОШИБКА РАНТАЙМА] На этапе: {step_name}")
     print(f"📡 URL запроса: {response.url}")
     if payload:
         print(f"📦 Payload (данные): {json.dumps(payload, ensure_ascii=False)}")
     print("-" * 60)
-    print(f"🔢 Статус ответа: {response.status_code}")
+    print(f"Статус ответа: {response.status_code}")
     print("📝 Ответ сервера:")
     try:
         print(json.dumps(response.json(), ensure_ascii=False, indent=2))
@@ -58,9 +58,8 @@ def log_error(step_name: str, response: httpx.Response, payload: Optional[dict])
 
 async def test_upload():
     async with httpx.AsyncClient(timeout=15.0) as client:
-        print("1. Создаем карту в БД (отправка формы с файлом)...")
+        print("1. Создаем карту")
         
-        # Готовим текстовые поля формы
         form_data = {
             "name": INPUT_DATA["scenario"]["name"],
             "pmtiles_url": "http://map_storage:9000/forestmaps/yenisei_cup.pmtiles",
@@ -73,7 +72,7 @@ async def test_upload():
         try:
             map_res = await client.post(f"{BASE_URL}/maps", data=form_data, files=files)
         except Exception as e:
-            print(f"💥 Ошибка подключения к бэкенду: {e}")
+            print(f"Ошибка подключения к бэкенду: {e}")
             return
 
         if map_res.status_code not in [200, 201]:
@@ -81,7 +80,7 @@ async def test_upload():
             return
             
         map_id = map_res.json()["id"]
-        print(f"✅ Карта успешно создана! ID карты = {map_id}")
+        print(f"Карта успешно создана! ID карты = {map_id}")
 
         print("\n2.Создаем вершины (Nodes) через lat/lon...")
         
@@ -103,7 +102,7 @@ async def test_upload():
                 
             created_node = res.json()
             node_name_to_id[node_name] = created_node["id"]
-            print(f"  ✅ Вершина '{node_name}' создана в базе под ID = {created_node['id']}")
+            print(f" Вершина '{node_name}' создана в базе под ID = {created_node['id']}")
 
 
         print("\n3. Загружаем ребра используя целочисленные ID...")
@@ -126,7 +125,7 @@ async def test_upload():
             if res.status_code not in [200, 201]:
                 log_error(f"POST /api/v1/edges ({source_name} -> {target_name})", res, edge_payload)
                 return
-            print(f"  ✅ Ребро {source_name} (ID: {source_id}) -> {target_name} (ID: {target_id}) загружено.")
+            print(f"Ребро {source_name} (ID: {source_id}) -> {target_name} (ID: {target_id}) загружено.")
 
         print("\n Все данные успешно отправлены без ошибок!")
         print("4. Тестируем GET запрос на получение вершин...")

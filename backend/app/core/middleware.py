@@ -14,13 +14,11 @@ def inject(func):
         warnings.simplefilter("ignore", DIWiringWarning)
         injected_func = di_inject(func)
 
-    # Проверяем, является ли оборачиваемая функция асинхронной (async def)
     if inspect.iscoroutinefunction(func):
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
-            result = await injected_func(*args, **kwargs)  # Честно дожидаемся выполнения!
+            result = await injected_func(*args, **kwargs)  
             
-            # Закрываем сессию СУБД после выполнения логики
             injected_services = [arg for arg in kwargs.values() if isinstance(arg, BaseService)]
             if injected_services:
                 try:
@@ -31,7 +29,6 @@ def inject(func):
         return async_wrapper
 
     else:
-        # Старая синхронная логика для обычных def функций
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
             result = injected_func(*args, **kwargs)

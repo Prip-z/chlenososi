@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoGraph Editor</title>
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, #map { height: 100vh; width: 100vw; margin: 0; overflow: hidden; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+    </style>
+</head>
+<body class="flex bg-gray-900 text-white font-sans relative">
+
+    <aside class="w-80 bg-gray-800 border-r border-gray-700 flex flex-col z-10 shadow-2xl absolute h-full left-0 top-0">
+        <div class="p-5 border-b border-gray-700">
+            <h1 class="text-xl font-bold text-emerald-400 mb-1">Graph Editor</h1>
+            <p class="text-xs text-gray-400">Map ID: <input type="number" id="currentMapId" value="1" class="bg-gray-900 border border-gray-600 rounded px-2 py-1 w-16 text-white text-center ml-2 outline-none"></p>
+        </div>
+
+        <div class="p-4 space-y-2 border-b border-gray-700">
+            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">Режим работы</h2>
+            
+            <label class="flex items-center space-x-3 cursor-pointer p-2 rounded hover:bg-gray-700 transition">
+                <input type="radio" name="mode" value="add_node" checked class="form-radio text-emerald-500 focus:ring-emerald-500 h-4 w-4">
+                <span class="text-sm font-medium">📍 Создавать вершины</span>
+            </label>
+            
+            <label class="flex items-center space-x-3 cursor-pointer p-2 rounded hover:bg-gray-700 transition">
+                <input type="radio" name="mode" value="add_edge" class="form-radio text-amber-500 focus:ring-amber-500 h-4 w-4">
+                <div class="flex flex-col">
+                    <span class="text-sm font-medium">🔗 Соединять ребрами</span>
+                    <span class="text-xs text-gray-400" id="edgeHint">Кликни на 2 вершины</span>
+                </div>
+            </label>
+
+            <label class="flex items-center space-x-3 cursor-pointer p-2 rounded hover:bg-gray-700 transition">
+                <input type="radio" name="mode" value="edit_node" class="form-radio text-blue-500 focus:ring-blue-500 h-4 w-4">
+                <span class="text-sm font-medium">✏️ Редактировать</span>
+            </label>
+        </div>
+
+        <div class="p-5 flex-1 overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-sm text-gray-400">Всего вершин:</span>
+                <span class="text-lg font-mono font-bold text-emerald-400" id="statNodes">0</span>
+            </div>
+            <div class="flex justify-between items-center mb-6">
+                <span class="text-sm text-gray-400">Всего ребер:</span>
+                <span class="text-lg font-mono font-bold text-amber-400" id="statEdges">0</span>
+            </div>
+            <label class="flex items-center space-x-3 cursor-pointer p-2 rounded hover:bg-gray-700 transition">
+                <input type="radio" name="mode" value="delete_mode" class="form-radio text-red-500 focus:ring-red-500 h-4 w-4">
+                <span class="text-sm font-medium">🗑️ Удаление (Вершины/Ребра)</span>
+            </label>
+            <button id="btnRefresh" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg text-sm font-semibold transition active:scale-95 border border-gray-600">
+                🔄 Обновить данные
+            </button>
+        </div>
+    </aside>
+
+    <div id="map" class="flex-grow ml-80"></div>
+
+    <dialog id="nodeDialog" class="bg-gray-800 text-white rounded-xl shadow-2xl border border-gray-600 p-0 backdrop:bg-black/60 backdrop:backdrop-blur-sm w-96">
+        <form method="dialog" id="nodeForm" class="flex flex-col">
+            <div class="p-5 border-b border-gray-700">
+                <h3 class="text-lg font-bold text-blue-400">Параметры вершины</h3>
+                <p class="text-xs text-gray-400 font-mono mt-1">ID: <span id="editNodeId"></span></p>
+                <input type="hidden" id="editLat">
+                <input type="hidden" id="editLon">
+            </div>
+            
+            <div class="p-5 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Тип поверхности (Terrain)</label>
+                    <select id="editTerrain" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="ice">Лёд (ice)</option>
+                        <option value="water">Вода (water)</option>
+                        <option value="rocks">Камни (rocks)</option>
+                        <option value="marsh">Болото (marsh)</option>
+                        <option value="slush">Шуга (slush)</option>
+                        <option value="shallow">Мелководье (shallow)</option>
+                        <option value="dirt_trail">Тропа (dirt_trail)</option>
+                    </select>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <input type="checkbox" id="editWalkable" class="w-5 h-5 text-blue-500 rounded bg-gray-900 border-gray-600 focus:ring-blue-500 focus:ring-offset-gray-800">
+                    <label for="editWalkable" class="text-sm font-medium text-gray-300 cursor-pointer">Проходима (is_walkable)</label>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-700 bg-gray-900 flex justify-end space-x-3 rounded-b-xl">
+                <button type="button" id="btnDeleteNode" class="px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-400/10 rounded-lg transition mr-auto">
+                    Удалить
+                </button>
+                <button type="button" onclick="document.getElementById('nodeDialog').close()" class="px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 rounded-lg transition">
+                    Отмена
+                </button>
+                <button type="button" id="btnSaveNode" class="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition shadow-md">
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </dialog>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        let nodesCache = []; 
+        let edgesCache = [];
+        let firstNodeForEdge = null; 
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    'osm': {
+                        type: 'raster',
+                        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        attribution: '&copy; OpenStreetMap Contributors'
+                    }
+                },
+                layers: [{
+                    id: 'osm',
+                    type: 'raster',
+                    source: 'osm'
+                }]
+            },
+            center: [92.45, 56.00], 
+            zoom: 11
+        });
+
+        map.on('load', () => {
+            map.addSource('edges', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }});
+            map.addLayer({
+                id: 'edges-layer',
+                type: 'line',
+                source: 'edges',
+                paint: {
+                    'line-color': '#f59e0b',
+                    'line-width': 4,
+                    'line-opacity': 0.8
+                }
+            });
+
+            map.addSource('nodes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }});
+            map.addLayer({
+                id: 'nodes-layer',
+                type: 'circle',
+                source: 'nodes',
+                paint: {
+                    'circle-radius': 7,
+                    'circle-color': [
+                        'case',
+                        ['boolean', ['get', 'is_walkable'], true], '#10b981',
+                        '#ef4444' 
+                    ],
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            map.addSource('highlight', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }});
+            map.addLayer({
+                id: 'highlight-layer',
+                type: 'circle',
+                source: 'highlight',
+                paint: {
+                    'circle-radius': 12,
+                    'circle-color': 'transparent',
+                    'circle-stroke-width': 3,
+                    'circle-stroke-color': '#3b82f6',
+                    'circle-stroke-opacity': 0.8
+                }
+            });
+
+            map.on('mouseenter', 'nodes-layer', () => map.getCanvas().style.cursor = 'pointer');
+            map.on('mouseleave', 'nodes-layer', () => map.getCanvas().style.cursor = '');
+
+            fetchGraphData(); 
+        });
+
+        function getMapId() { return parseInt(document.getElementById('currentMapId').value) || 1; }
+        function getMode() { return document.querySelector('input[name="mode"]:checked').value; }
+
+        async function fetchGraphData() {
+            try {
+                const bounds = map.getBounds();
+                const bbox = {
+                    min_lon: bounds.getWest(),
+                    min_lat: bounds.getSouth(),
+                    max_lon: bounds.getEast(),
+                    max_lat: bounds.getNorth()
+                };
+
+                const mapId = getMapId();
+                
+                const res = await fetch(`${API_BASE}/maps/${mapId}/geojson`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bbox)
+                });
+                
+                if (!res.ok) throw new Error(`Ошибка сервера: ${res.status}`);
+                const geojson = await res.json();
+                
+                map.getSource('nodes').setData(geojson);
+                map.getSource('edges').setData(geojson);
+
+                const points = geojson.features.filter(f => f.geometry.type === 'Point');
+                const lines = geojson.features.filter(f => f.geometry.type === 'LineString');
+                
+                document.getElementById('statNodes').innerText = points.length;
+                document.getElementById('statEdges').innerText = lines.length;
+
+                nodesCache = points.map(p => ({
+                    id: p.properties.id,
+                    lon: p.geometry.coordinates[0],
+                    lat: p.geometry.coordinates[1]
+                }));
+
+            } catch (err) {
+                console.error("Ошибка загрузки графа:", err);
+            }
+        }
+
+        map.on('moveend', fetchGraphData);
+
+        function renderGraph() {
+            const nodesGeoJSON = {
+                type: 'FeatureCollection',
+                features: nodesCache.map(n => ({
+                    type: 'Feature',
+                    properties: { ...n },
+                    geometry: { type: 'Point', coordinates: [n.lon, n.lat] }
+                }))
+            };
+            map.getSource('nodes').setData(nodesGeoJSON);
+
+            const edgesFeatures = [];
+            edgesCache.forEach(edge => {
+                const sourceNode = nodesCache.find(n => n.id === edge.source_id);
+                const targetNode = nodesCache.find(n => n.id === edge.target_id);
+                if (sourceNode && targetNode) {
+                    edgesFeatures.push({
+                        type: 'Feature',
+                        properties: { id: edge.id, weight: edge.weight },
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: [
+                                [sourceNode.lon, sourceNode.lat],
+                                [targetNode.lon, targetNode.lat]
+                            ]
+                        }
+                    });
+                }
+            });
+            map.getSource('edges').setData({ type: 'FeatureCollection', features: edgesFeatures });
+        }
+
+
+        function normalizeNodeFeature(feature) {
+            const props = feature?.properties || {};
+            const coordinates = Array.isArray(feature?.geometry?.coordinates) ? feature.geometry.coordinates : [];
+            return {
+                ...props,
+                lon: props.lon ?? props.lng ?? coordinates[0],
+                lat: props.lat ?? coordinates[1]
+            };
+        }
+
+        function getValidCoordinate(value) {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        map.on('click', async (e) => {
+            
+            const mode = getMode();
+            if (mode === 'delete_mode') {
+                const edgeFeatures = map.queryRenderedFeatures(e.point, { layers: ['edges-layer'] });
+                if (edgeFeatures.length > 0) {
+                    const id = edgeFeatures[0].properties.id;
+                    if (confirm(`Удалить ребро ${id}?`)) {
+                        await fetch(`${API_BASE}/edges/${id}`, { method: 'DELETE' });
+                        fetchGraphData();
+                    }
+                    return;
+                }
+                
+                const nodeFeatures = map.queryRenderedFeatures(e.point, { layers: ['nodes-layer'] });
+                if (nodeFeatures.length > 0) {
+                    openEditDialog(nodeFeatures[0].properties);
+                    return;
+                }
+            }
+
+            const features = map.queryRenderedFeatures(e.point, { layers: ['nodes-layer'] });
+            
+            if (features.length > 0) {
+                const clickedNodeProps = normalizeNodeFeature(features[0]);
+
+                if (mode === 'edit_node') {
+                    openEditDialog(clickedNodeProps);
+                } 
+                else if (mode === 'add_edge') {
+                    handleEdgeCreationClick(clickedNodeProps);
+                }
+                return;
+            }
+
+            if (mode === 'add_node') {
+                const { lng, lat } = e.lngLat;
+                const payload = {
+                    map_id: getMapId(),
+                    lat: lat,
+                    lon: lng,
+                    is_walkable: true,
+                    terrain_type: "ice"
+                };
+
+                try {
+                    const res = await fetch(`${API_BASE}/nodes`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (res.ok) fetchGraphData();
+                } catch (err) {
+                    console.error("Ошибка создания ноды:", err);
+                }
+            } else if (mode === 'add_edge') {
+                resetEdgeSelection();
+            }
+        });
+
+        async function handleEdgeCreationClick(nodeProps) {
+            const hint = document.getElementById('edgeHint');
+            const clickedLon = getValidCoordinate(nodeProps?.lon);
+            const clickedLat = getValidCoordinate(nodeProps?.lat);
+
+            if (clickedLon === null || clickedLat === null) {
+                hint.innerText = 'Не удалось определить координаты вершины';
+                hint.classList.replace('text-gray-400', 'text-amber-400');
+                return;
+            }
+            
+            if (!firstNodeForEdge) {
+                firstNodeForEdge = nodeProps;
+                hint.innerText = `Выбрана ID: ${nodeProps.id}. Выбери вторую.`;
+                hint.classList.replace('text-gray-400', 'text-amber-400');
+                
+                map.getSource('highlight').setData({
+                    type: 'FeatureCollection',
+                    features: [{
+                        type: 'Feature',
+                        geometry: { type: 'Point', coordinates: [clickedLon, clickedLat] }
+                    }]
+                });
+                return;
+            }
+
+            if (firstNodeForEdge.id === nodeProps.id) {
+                hint.innerText = 'Выбери другую вершину';
+                hint.classList.replace('text-gray-400', 'text-amber-400');
+                return;
+            }
+
+            const firstLon = getValidCoordinate(firstNodeForEdge?.lon);
+            const firstLat = getValidCoordinate(firstNodeForEdge?.lat);
+            if (firstLon === null || firstLat === null) {
+                hint.innerText = 'Первая вершина не содержит координат';
+                hint.classList.replace('text-gray-400', 'text-amber-400');
+                resetEdgeSelection();
+                return;
+            }
+
+            const p1 = maplibregl.LngLat.convert([firstLon, firstLat]);
+            const p2 = maplibregl.LngLat.convert([clickedLon, clickedLat]);
+            
+            const calculatedWeight = Math.round((p1.distanceTo(p2) / 1000) * 100) / 100;
+
+            const payload = {
+                map_id: getMapId(),
+                source_id: firstNodeForEdge.id,
+                target_id: nodeProps.id,
+                weight: calculatedWeight 
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/edges`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) fetchGraphData();
+            } catch (err) {
+                console.error("Ошибка создания ребра:", err);
+            }
+
+            resetEdgeSelection();
+        }
+
+        document.getElementById('btnDeleteNode').addEventListener('click', async () => {
+            const id = document.getElementById('editNodeId').innerText;
+            if(!confirm(`Удалить вершину ${id}? Все связанные ребра тоже могут пострадать.`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/nodes/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    dialog.close();
+                    fetchGraphData();
+                }
+            } catch (err) { console.error(err); }
+        });
+
+        function resetEdgeSelection() {
+            firstNodeForEdge = null;
+            document.getElementById('edgeHint').innerText = "Кликни на 2 вершины";
+            document.getElementById('edgeHint').classList.replace('text-amber-400', 'text-gray-400');
+            map.getSource('highlight').setData({ type: 'FeatureCollection', features: [] });
+        }
+
+        document.querySelectorAll('input[name="mode"]').forEach(radio => {
+            radio.addEventListener('change', resetEdgeSelection);
+        });
+
+        const dialog = document.getElementById('nodeDialog');
+        
+        function openEditDialog(props) {
+            document.getElementById('editNodeId').innerText = props.id;
+            document.getElementById('editLat').value = props.lat;
+            document.getElementById('editLon').value = props.lon;
+            document.getElementById('editTerrain').value = props.terrain_type || 'ice';
+            
+            const isWalkable = typeof props.is_walkable === 'string' ? props.is_walkable === 'true' : props.is_walkable;
+            document.getElementById('editWalkable').checked = isWalkable !== false; // по дефолту true
+
+            dialog.showModal();
+        }
+
+        
+
+        document.getElementById('btnSaveNode').addEventListener('click', async () => {
+            const id = document.getElementById('editNodeId').innerText;
+            const payload = {
+                map_id: getMapId(),
+                lat: parseFloat(document.getElementById('editLat').value),
+                lon: parseFloat(document.getElementById('editLon').value),
+                terrain_type: document.getElementById('editTerrain').value,
+                is_walkable: document.getElementById('editWalkable').checked
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/nodes/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    dialog.close();
+                    fetchGraphData();
+                }
+            } catch (err) { console.error(err); }
+        });
+
+        
+
+        document.getElementById('btnRefresh').addEventListener('click', fetchGraphData);
+
+    </script>
+</body>
+</html>

@@ -14,7 +14,6 @@ class MapRepository(BaseRepository):
 
     def get_nodes_in_bbox(self, map_id: int, min_lon: float, min_lat: float, max_lon: float, max_lat: float) -> List[
         dict]:
-        """Ищет вершины внутри квадрата и сразу конвертирует PostGIS POINT в lat/lon"""
         with self.session_factory() as session:
             bbox = func.ST_MakeEnvelope(min_lon, min_lat, max_lon, max_lat, 4326)
 

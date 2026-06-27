@@ -15,7 +15,6 @@ class S3Storage:
             endpoint_url=settings.S3_ENDPOINT_URL,
             aws_access_key_id=settings.S3_ACCESS_KEY,
             aws_secret_access_key=settings.S3_SECRET_KEY,
-            # Используем правильный класс AioConfig вместо boto3.session.Config
             config=AioConfig(signature_version='s3v4')
         )
 

@@ -73,7 +73,12 @@ class BaseRepository:
 
     def update(self, id: int, schema: BaseModel):
         with self.session_factory() as session:
-            session.query(self.model).filter(self.model.id == id).update(schema.dict(exclude_none=True))
+            query = session.query(self.model).filter(self.model.id == id)
+            existing = query.first()
+            if not existing:
+                raise NotFoundError(detail=f"not found id : {id}")
+
+            query.update(schema.dict(exclude_none=True))
             session.commit()
             return self.read_by_id(id)
 
