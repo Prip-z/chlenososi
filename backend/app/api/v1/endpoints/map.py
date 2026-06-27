@@ -84,3 +84,12 @@ def download_map_area(
     service: MapService = Depends(Provide[Container.map_service]),
 ):
     return service.download_area(map_id, bbox)
+
+@router.post("/{map_id}/geojson")
+@inject
+def get_geojson(
+    map_id: int,
+    bbox: BoundingBox,
+    service: MapService = Depends(Provide[Container.map_service]),
+):
+    return service.get_map_as_geojson(map_id, bbox)

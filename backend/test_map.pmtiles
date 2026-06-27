@@ -1,0 +1,19 @@
+{
+  "vector_layers": [
+    {
+      "id": "buildings",
+      "fields": {
+        "id": "Number",
+        "name": "String",
+        "height": "Number"
+      },
+      "minzoom": 0,
+      "maxzoom": 14
+    }
+  ],
+  "attribution": "© OpenStreetMap contributors",
+  "name": "my_custom_map",
+  "description": "Тестовый слой зданий",
+  "version": "1.0",
+  "type": "overlay"
+}

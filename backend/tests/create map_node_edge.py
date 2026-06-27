@@ -2,6 +2,7 @@ import asyncio
 import httpx
 import json
 import io
+from typing import Optional
 
 BASE_URL = "http://localhost:8000/api/v1"
 
@@ -28,7 +29,7 @@ INPUT_DATA = {
   }
 }
 
-# Фейковые координаты для симуляции карты водохранилища
+
 NODE_COORDINATES = {
     "Дивногорск": {"lat": 55.9594, "lon": 92.3951},
     "Полынья": {"lat": 55.9750, "lon": 92.4200},
@@ -41,7 +42,7 @@ NODE_COORDINATES = {
     "Бирюса": {"lat": 56.0600, "lon": 92.6000}
 }
 
-def log_error(step_name: str, response: httpx.Response, payload: dict = None):
+def log_error(step_name: str, response: httpx.Response, payload: Optional[dict]):
     print(f"\n🛑 [ОШИБКА РАНТАЙМА] На этапе: {step_name}")
     print(f"📡 URL запроса: {response.url}")
     if payload:
@@ -57,9 +58,7 @@ def log_error(step_name: str, response: httpx.Response, payload: dict = None):
 
 async def test_upload():
     async with httpx.AsyncClient(timeout=15.0) as client:
-        
-        # === 1. СОЗДАНИЕ КАРТЫ (MULTIPART/FORM-DATA) ===
-        print("1. 🗺️ Создаем карту в БД (отправка формы с файлом)...")
+        print("1. Создаем карту в БД (отправка формы с файлом)...")
         
         # Готовим текстовые поля формы
         form_data = {
@@ -68,12 +67,10 @@ async def test_upload():
             "description": INPUT_DATA["scenario"]["area"]
         }
         
-        # Симулируем бинарник .pmtiles в памяти
         fake_file = io.BytesIO(b"PMTiles fake binary data content for testing")
         files = {"file": ("yenisei_cup.pmtiles", fake_file, "application/octet-stream")}
         
         try:
-            # Обрати внимание: БЕЗ слэша на конце, строго /api/v1/maps
             map_res = await client.post(f"{BASE_URL}/maps", data=form_data, files=files)
         except Exception as e:
             print(f"💥 Ошибка подключения к бэкенду: {e}")
@@ -86,11 +83,8 @@ async def test_upload():
         map_id = map_res.json()["id"]
         print(f"✅ Карта успешно создана! ID карты = {map_id}")
 
-
-        # === 2. СОЗДАНИЕ ВЕРШИН (NODES) ===
-        print("\n2. 📍 Создаем вершины (Nodes) через lat/lon...")
+        print("\n2.Создаем вершины (Nodes) через lat/lon...")
         
-        # Словарь для маппинга: {"Название_точки": int_id_из_базы}
         node_name_to_id = {}
         
         for node_name, coords in NODE_COORDINATES.items():
@@ -108,19 +102,16 @@ async def test_upload():
                 return
                 
             created_node = res.json()
-            # Сохраняем ID, который сгенерировала СУБД для этой вершины
             node_name_to_id[node_name] = created_node["id"]
             print(f"  ✅ Вершина '{node_name}' создана в базе под ID = {created_node['id']}")
 
 
-        # === 3. СОЗДАНИЕ СВЯЗЕЙ (EDGES) ===
-        print("\n3. 🌉 Загружаем ребра (Edges) используя целочисленные ID...")
+        print("\n3. Загружаем ребра используя целочисленные ID...")
         
         for edge in INPUT_DATA["map"]["edges"]:
             source_name = edge["from"]
             target_name = edge["to"]
             
-            # Достаем ID нод из нашего словаря соответствий
             source_id = node_name_to_id[source_name]
             target_id = node_name_to_id[target_name]
             
@@ -137,15 +128,19 @@ async def test_upload():
                 return
             print(f"  ✅ Ребро {source_name} (ID: {source_id}) -> {target_name} (ID: {target_id}) загружено.")
 
-        # === 4. ПРОВЕРКА ОКОНЧАТЕЛЬНОГО GET ===
-        print("\n🎉 Все данные успешно отправлены без ошибок!")
-        print("4. 🔍 Тестируем GET запрос на получение вершин...")
+        print("\n Все данные успешно отправлены без ошибок!")
+        print("4. Тестируем GET запрос на получение вершин...")
         get_res = await client.get(f"{BASE_URL}/nodes")
         
         if get_res.status_code == 200:
-            print(f"🚀 ПОЛНЫЙ УСПЕХ! Роут отдал статус 200. Вернулось нод из базы: {len(get_res.json())}")
+            print(f"Роут отдал статус 200. Вернулось нод из базы: {len(get_res.json())}")
         else:
-            log_error("GET /api/v1/nodes", get_res)
+            try:
+                data = get_res.json() 
+            except:
+                data = {"raw_text": get_res.text}
+
+            log_error("GET /api/v1/nodes", get_res, payload=data)
 
 if __name__ == "__main__":
     asyncio.run(test_upload())

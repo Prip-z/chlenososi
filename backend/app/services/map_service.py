@@ -7,7 +7,9 @@ from app.core.s3 import s3_storage
 from app.schema.map_schema import UpsertMap
 
 from app.schema.map_schema import NodeResponse, EdgeResponse, MapAreaResponse, BoundingBox
-from app.core.exceptions import NotFoundError # или откуда у тебя NotFoundError
+from app.core.exceptions import NotFoundError 
+
+from app.util.geojson import to_geojson
 
 from typing import cast
 
@@ -63,3 +65,15 @@ class MapService(BaseService):
         # 5. Возвращаем схему ответа
         from app.schema.map_schema import Map as SchemaMap
         return cast(SchemaMap, created_db_model)
+    
+    def get_map_as_geojson(self, map_id: int, bbox: BoundingBox):
+        
+        nodes_data = self.map_repository.get_nodes_in_bbox(
+            map_id, bbox.min_lon, bbox.min_lat, bbox.max_lon, bbox.max_lat
+        )
+        node_ids = [n['id'] for n in nodes_data]
+        edges_data = self.map_repository.get_edges_by_node_ids(map_id, node_ids)
+        
+        return to_geojson(nodes_data, edges_data)  
+
+ 
