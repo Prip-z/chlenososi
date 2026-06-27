@@ -9,15 +9,14 @@ from app.core.exceptions import DuplicatedError, NotFoundError
 from app.model.base_model import BaseModel
 from app.util.query_builder import dict_to_sqlalchemy_filter_options
 
-T = TypeVar("T", bound=BaseModel)
 
 
 class BaseRepository:
-    def __init__(self, session_factory: Callable[..., AbstractContextManager[Session]], model: Type[T]) -> None:
+    def __init__(self, session_factory: Callable[..., AbstractContextManager[Session]], model: Type[BaseModel]) -> None:
         self.session_factory = session_factory
         self.model = model
 
-    def read_by_options(self, schema: T, eager: bool = False) -> dict:
+    def read_by_options(self, schema: BaseModel , eager: bool = False) -> dict:
         with self.session_factory() as session:
             schema_as_dict: dict = schema.dict(exclude_none=True)
             ordering: str = schema_as_dict.get("ordering", configs.ORDERING)
@@ -61,7 +60,7 @@ class BaseRepository:
                 raise NotFoundError(detail=f"not found id : {id}")
             return query
 
-    def create(self, schema: T):
+    def create(self, schema: BaseModel):
         with self.session_factory() as session:
             query = self.model(**schema.dict())
             try:
@@ -72,7 +71,7 @@ class BaseRepository:
                 raise DuplicatedError(detail=str(e.orig))
             return query
 
-    def update(self, id: int, schema: T):
+    def update(self, id: int, schema: BaseModel):
         with self.session_factory() as session:
             session.query(self.model).filter(self.model.id == id).update(schema.dict(exclude_none=True))
             session.commit()
@@ -84,7 +83,7 @@ class BaseRepository:
             session.commit()
             return self.read_by_id(id)
 
-    def whole_update(self, id: int, schema: T):
+    def whole_update(self, id: int, schema: BaseModel):
         with self.session_factory() as session:
             session.query(self.model).filter(self.model.id == id).update(schema.dict())
             session.commit()

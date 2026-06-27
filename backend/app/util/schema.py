@@ -4,7 +4,7 @@ from pydantic.main import ModelMetaclass
 
 
 class AllOptional(ModelMetaclass):
-    def __new__(self, name, bases, namespaces, **kwargs):
+    def __new__(cls, name, bases, namespaces, **kwargs):
         annotations = namespaces.get("__annotations__", {})
         for base in bases:
             annotations.update(base.__annotations__)
@@ -12,4 +12,4 @@ class AllOptional(ModelMetaclass):
             if not field.startswith("__"):
                 annotations[field] = Optional[annotations[field]]
         namespaces["__annotations__"] = annotations
-        return super().__new__(self, name, bases, namespaces, **kwargs)
+        return super().__new__(cls, name, bases, namespaces, **kwargs)
