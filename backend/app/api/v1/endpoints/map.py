@@ -6,11 +6,19 @@ from app.core.middleware import inject
 from app.schema.base_schema import Blank
 from app.schema.map_schema import BoundingBox, FindMap, FindMapResult, Map, MapAreaResponse, UpsertMap
 from app.services.map_service import MapService
+from fastapi.responses import FileResponse
+from pathlib import Path
 
 router = APIRouter(
     prefix="/maps",
     tags=["maps"],
 )
+
+@router.get("/server")
+def get_page():
+    CURRENT_DIR = Path(__file__).parent 
+    file_path = CURRENT_DIR / "index.html" 
+    return FileResponse(file_path)
 
 @router.get("", response_model=FindMapResult)
 @inject
@@ -88,3 +96,4 @@ def get_geojson(
     service: MapService = Depends(Provide[Container.map_service]),
 ):
     return service.get_map_as_geojson(map_id, bbox)
+
